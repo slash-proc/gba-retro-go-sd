@@ -2,23 +2,23 @@
 #
 #   make host                     # SDL2, same PROJECT_KIND as device build
 #   make host HOST_SDL=3          # SDL3
-#   make host PROJECT_KIND=homebrew
-#   ./example_host [rom]          # optional ROM path (cores); or HOST_ROM=…
+#   ./gba_host [rom.gba]          # or HOST_ROM=…
 #
 # Requires: pkg-config + libsdl2-dev / sdl2 (or sdl3).
+# On macOS Homebrew: PKG_CONFIG_PATH is auto-probed under /opt/homebrew.
 
 HOST_SDL   ?= 2
 HOST_SCALE ?= 2
-# Native compiler (do not reuse arm-none-eabi-gcc from sdk/Makefile).
 HOST_CC    ?= cc
+HOST_CXX   ?= c++
+HOST_AS    ?= $(HOST_CC)
+
+# Homebrew / local pkg-config paths (SDL lives outside the default search).
+PKG_CONFIG_PATH ?= /opt/homebrew/lib/pkgconfig:/usr/local/lib/pkgconfig
+export PKG_CONFIG_PATH
 
 HOST_BUILD_DIR := build/host/$(PROJECT_KIND)_sdl$(HOST_SDL)
-
-ifeq ($(PROJECT_KIND),homebrew)
-HOST_BIN := ExampleHB_host
-else
 HOST_BIN := $(CORE_NAME)_host
-endif
 
 ifeq ($(HOST_SDL),3)
 HOST_SDL_PC := sdl3
@@ -38,10 +38,14 @@ endif
 
 HOST_INC_ROOT := $(GNW_CORE_SDK)/include
 
+# Device entry is CORE_ENTRY (app_main_gba); host_main.c calls HOST_CORE_ENTRY.
+HOST_CORE_ENTRY ?= $(CORE_ENTRY)
+
 HOST_DEFS := \
 	-DHOST_BUILD=1 \
 	-DHOST_SDL=$(HOST_SDL) \
 	-DHOST_SCALE=$(HOST_SCALE) \
+	-DHOST_CORE_ENTRY=$(HOST_CORE_ENTRY) \
 	-DSDL_MAIN_HANDLED=1 \
 	-DIS_LITTLE_ENDIAN \
 	-DGNW_DISABLE_COMPRESSION \
@@ -57,21 +61,39 @@ HOST_INCLUDES := \
 	-I$(HOST_INC_ROOT)/Core/Src/porting/lib \
 	-I$(HOST_INC_ROOT)/Core/Src/porting/lib/FatFs \
 	-I$(HOST_INC_ROOT)/retro-go-stm32/components/odroid \
+	$(CORE_C_INCLUDES) \
 	$(HOST_PKG_CFLAGS)
+
+GBA_HOST_WARN_OFF := -Wno-parentheses -Wno-unknown-pragmas -Wno-strict-aliasing -Wno-comment \
+	-Wno-unused-function -Wno-unused-variable -Wno-unused-but-set-variable \
+	-Wno-sign-compare -Wno-format -Wno-unused-parameter
 
 HOST_CFLAGS := -O2 -g -Wall -Wextra -std=c11 \
 	-include host/stubs/config.h \
-	$(HOST_DEFS) $(HOST_INCLUDES)
+	$(HOST_DEFS) $(HOST_INCLUDES) $(GBA_HOST_WARN_OFF)
 
-HOST_SRCS := \
-	$(CORE_C_SOURCES) \
+HOST_CXXFLAGS := -O2 -g -Wall -Wextra -std=c++17 -fno-rtti -fno-exceptions \
+	-include host/stubs/config.h \
+	$(HOST_DEFS) $(HOST_INCLUDES) $(GBA_HOST_WARN_OFF)
+
+# Device .S (Thumb/ARM) is not used on host — BIOS comes from host_gba_bios.S.
+# Soften ARM-only bilinear; stub imlib_draw_image in host_emu.c.
+HOST_C_SRCS := \
+	$(filter-out src/porting/bilinear.c,$(CORE_C_SOURCES)) \
 	host/host_main.c \
 	host/host_platform.c \
 	host/host_emu.c \
 	host/host_i18n.c
 
-HOST_OBJS := $(addprefix $(HOST_BUILD_DIR)/,$(HOST_SRCS:.c=.o))
-HOST_DEPS := $(HOST_OBJS:.o=.d)
+# sdk/Makefile appends gw_core_cxx_support.cpp for the device link — drop it here.
+HOST_CXX_SRCS := $(filter-out %/gw_core_cxx_support.cpp,$(CORE_CXX_SOURCES))
+HOST_ASM_SRCS := host/host_gba_bios.S
+
+HOST_C_OBJS   := $(addprefix $(HOST_BUILD_DIR)/,$(HOST_C_SRCS:.c=.o))
+HOST_CXX_OBJS := $(addprefix $(HOST_BUILD_DIR)/,$(HOST_CXX_SRCS:.cc=.o))
+HOST_ASM_OBJS := $(addprefix $(HOST_BUILD_DIR)/,$(HOST_ASM_SRCS:.S=.o))
+HOST_OBJS     := $(HOST_C_OBJS) $(HOST_CXX_OBJS) $(HOST_ASM_OBJS)
+HOST_DEPS     := $(HOST_C_OBJS:.o=.d) $(HOST_CXX_OBJS:.o=.d)
 
 .PHONY: host host_clean
 
@@ -80,22 +102,32 @@ host: $(HOST_BIN)
 
 $(HOST_BIN): $(HOST_OBJS)
 	$(V)$(ECHO) [ LD HOST ] $@
-	$(V)$(HOST_CC) -o $@ $(HOST_OBJS) $(HOST_PKG_LIBS)
+	$(V)$(HOST_CXX) -o $@ $(HOST_OBJS) $(HOST_PKG_LIBS)
 
-# Explicit pattern under HOST_BUILD_DIR only (do not collide with sdk ARM rules).
+# Explicit patterns under HOST_BUILD_DIR only (do not collide with sdk ARM rules).
 $(HOST_BUILD_DIR)/src/%.o: src/%.c
 	$(V)mkdir -p $(dir $@)
 	$(V)$(ECHO) [ CC HOST ] $<
 	$(V)$(HOST_CC) $(HOST_CFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -c $< -o $@
+
+$(HOST_BUILD_DIR)/src/%.o: src/%.cc
+	$(V)mkdir -p $(dir $@)
+	$(V)$(ECHO) [ CXX HOST ] $<
+	$(V)$(HOST_CXX) $(HOST_CXXFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -c $< -o $@
 
 $(HOST_BUILD_DIR)/host/%.o: host/%.c
 	$(V)mkdir -p $(dir $@)
 	$(V)$(ECHO) [ CC HOST ] $<
 	$(V)$(HOST_CC) $(HOST_CFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -c $< -o $@
 
+$(HOST_BUILD_DIR)/host/%.o: host/%.S
+	$(V)mkdir -p $(dir $@)
+	$(V)$(ECHO) [ AS HOST ] $<
+	$(V)$(HOST_AS) -c -Isrc/gpsp/bios $< -o $@
+
 host_clean:
 	$(V)rm -rf build/host
-	$(V)rm -f $(CORE_NAME)_host ExampleHB_host
+	$(V)rm -f $(CORE_NAME)_host
 
 clean:: host_clean
 

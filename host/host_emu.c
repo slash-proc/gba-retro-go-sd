@@ -22,9 +22,11 @@
 #include "odroid_settings.h"
 #include "odroid_input.h"
 #include "odroid_audio.h"
+#include "odroid_display.h"
 #include "common.h"
 #include "rom_manager.h"
 #include "main.h"
+#include "bilinear.h"
 
 /* --- Globals matching firmware / bridge surface -------------------------- */
 
@@ -619,24 +621,75 @@ void odroid_overlay_alert(const char *text) { (void)text; }
 uint8_t *odroid_overlay_cache_file_in_flash(const char *file_path, uint32_t *file_size_p,
                                             bool byte_swap)
 {
-    (void)file_path;
+    FILE *f;
+    long sz;
+    uint8_t *buf;
+    size_t n;
+
     (void)byte_swap;
     if (file_size_p)
         *file_size_p = 0;
-    return NULL;
+    if (!file_path || !file_path[0])
+        return NULL;
+
+    f = fopen(file_path, "rb");
+    if (!f)
+        return NULL;
+    if (fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    sz = ftell(f);
+    if (sz <= 0) {
+        fclose(f);
+        return NULL;
+    }
+    rewind(f);
+    buf = (uint8_t *)malloc((size_t)sz);
+    if (!buf) {
+        fclose(f);
+        return NULL;
+    }
+    n = fread(buf, 1, (size_t)sz, f);
+    fclose(f);
+    if (n != (size_t)sz) {
+        free(buf);
+        return NULL;
+    }
+    if (file_size_p)
+        *file_size_p = (uint32_t)sz;
+    return buf;
+}
+
+uint8_t *odroid_overlay_cache_file_in_flash_relocate(const char *file_path,
+                                                     uint32_t *file_size_p, bool byte_swap,
+                                                     gw_flash_relocate_cb_t relocate_cb)
+{
+    uint32_t size = 0;
+    uint8_t *buf = odroid_overlay_cache_file_in_flash(file_path, &size, byte_swap);
+
+    if (file_size_p)
+        *file_size_p = size;
+    if (!buf || !size)
+        return NULL;
+    if (relocate_cb)
+        relocate_cb(buf, size, 0, buf, size);
+    return buf;
 }
 
 size_t odroid_overlay_cache_file_in_ram(const char *file_path, uint8_t *dest_address)
 {
     FILE *f;
     size_t n;
+    size_t cap;
 
     if (!file_path || !dest_address)
         return 0;
     f = fopen(file_path, "rb");
     if (!f)
         return 0;
-    n = fread(dest_address, 1, host_active_file.size ? host_active_file.size : ram_get_free_size(), f);
+    cap = host_active_file.size ? host_active_file.size : ram_get_free_size();
+    n = fread(dest_address, 1, cap, f);
     fclose(f);
     return n;
 }
@@ -828,7 +881,7 @@ size_t itc_get_free_size(void) { return 64 * 1024; }
 void dtc_init(void) {}
 void *dtc_malloc(size_t size) { return malloc(size); }
 void *dtc_calloc(size_t count, size_t size) { return calloc(count, size); }
-size_t dtc_get_free_size(void) { return 64 * 1024; }
+size_t dtc_get_free_size(void) { return 256 * 1024; }
 
 void wdog_refresh(void)
 {
@@ -846,6 +899,69 @@ void boot_magic_set(uint32_t magic) { (void)magic; }
 void SystemClock_Config(uint8_t new_oc_level) { (void)new_oc_level; }
 void uptime_inc(void) {}
 uint32_t uptime_get(void) { return host_platform_ticks_ms(); }
+
+uint32_t get_SystemCoreClock(void)
+{
+    return 280000000u; /* device OC3-ish; only used for host diag pacing */
+}
+
+void lcd_sync(void) {}
+void lcd_backlight_set(uint8_t brightness) { (void)brightness; }
+bool lcd_sleep_while_swap_pending(void) { return false; }
+
+void draw_error_screen(const char *main_line, const char *line_1, const char *line_2)
+{
+    fprintf(stderr, "gba fatal: %s\n", main_line ? main_line : "?");
+    if (line_1)
+        fprintf(stderr, "  %s\n", line_1);
+    if (line_2)
+        fprintf(stderr, "  %s\n", line_2);
+}
+
+/* ARM DSP bilinear is device-only; host keeps FILTER_OFF so this is unused. */
+void imlib_draw_image(image_t *dst_img, image_t *src_img, int dst_x_start, int dst_y_start,
+                      int dst_stride, float x_scale, float y_scale, rectangle_t *roi,
+                      int rgb_channel, int alpha, const uint16_t *color_palette,
+                      const uint8_t *alpha_palette, image_hint_t hint,
+                      imlib_draw_row_callback_t callback, void *dst_row_override)
+{
+    (void)dst_img; (void)src_img; (void)dst_x_start; (void)dst_y_start;
+    (void)dst_stride; (void)x_scale; (void)y_scale; (void)roi;
+    (void)rgb_channel; (void)alpha; (void)color_palette; (void)alpha_palette;
+    (void)hint; (void)callback; (void)dst_row_override;
+}
+
+static odroid_display_scaling_t host_scaling = ODROID_DISPLAY_SCALING_FIT;
+static odroid_display_filter_t host_filter = ODROID_DISPLAY_FILTER_OFF;
+
+odroid_display_scaling_t odroid_display_get_scaling_mode(void) { return host_scaling; }
+void odroid_display_set_scaling_mode(odroid_display_scaling_t mode) { host_scaling = mode; }
+odroid_display_filter_t odroid_display_get_filter_mode(void) { return host_filter; }
+void odroid_display_set_filter_mode(odroid_display_filter_t mode) { host_filter = mode; }
+
+char *odroid_system_get_path(emu_path_type_t type, const char *romPath)
+{
+    char *out = (char *)malloc(512);
+    char stem[64];
+    const char *name = romPath && romPath[0] ? romPath : "host";
+
+    if (!out)
+        return NULL;
+    host_sanitize_stem(stem, sizeof(stem), name);
+    switch (type) {
+    case ODROID_PATH_SAVE_SRAM:
+        snprintf(out, 512, "host_saves/%s.sav", stem);
+        break;
+    case ODROID_PATH_SAVE_STATE:
+    case ODROID_PATH_SAVE_STATE_1:
+        snprintf(out, 512, "host_saves/%s.slot0.sav", stem);
+        break;
+    default:
+        snprintf(out, 512, "host_saves/%s.path%d", stem, (int)type);
+        break;
+    }
+    return out;
+}
 
 unsigned int crc32_le(unsigned int crc, unsigned char const *buf, unsigned int len)
 {

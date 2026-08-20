@@ -6,7 +6,11 @@
 *.d
 *.su
 *.lst
+*.xip
 *_host
 host_saves/
 .DS_Store
 __pycache__/
+
+# gpSP bundled BIOS replacement (not a packed core)
+!src/gpsp/bios/open_gba_bios.bin

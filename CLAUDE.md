@@ -1,21 +1,30 @@
-# CLAUDE.md — Porting an emulator core (Retro-Go SD)
+# CLAUDE.md — Game Boy Advance core (Retro-Go SD)
 
-This repository is a **single-project** template for a Game & Watch
-**dynamic core** or a **GWHB homebrew**: a freestanding Cortex-M7 binary
-that the firmware loads into a fixed RAM window and talks to **only**
-through `gw_firmware_abi_t`. You do not link against the firmware ELF.
+This repository is the **Game Boy Advance (gpSP)** dynamic core for
+Game & Watch Retro-Go SD: a freestanding Cortex-M7 binary that the
+firmware loads into a fixed RAM window and talks to **only** through
+`gw_firmware_abi_t`. You do not link against the firmware ELF.
 
-One tree = one binary. Choose the kind at build time:
+Packed as `PROJECT_KIND=core` → `/cores/gba.bin` plus sidecar
+`/cores/gba.xip` (cold text/rodata cached into QSPI at runtime).
+Homebrew packing is not used here.
 
+Read `README.md` for build/pack basics. Read `ld/gba_core.ld` and
+`sdk/ld/core_ram_emu.ld` for the memory + linker contract. This file is
+the memory + porting checklist.
 
-| Kind         | `PROJECT_KIND` | Packer             | SD path                |
-| ------------ | -------------- | ------------------ | ---------------------- |
-| Dynamic core | `core` (default) | `pack_core.py`   | `/cores/*.bin`         |
-| Homebrew     | `homebrew`     | `pack_homebrew.py` | `/roms/homebrew/*.bin` |
+## GBA-specific layout
 
+| Pool | Use |
+|------|-----|
+| **ITCM** | Hot **code only** (`cpu.o`, `m4a_gpsp.o`, `update_scanline`). No `.data` / `.bss` / `.rodata`. |
+| **DTCM** | Framebuffer 75 KiB (`dtc_malloc`). BIOS 16 KiB + sound ring prefer DTCM, fall back to AHB. **Do not `dtc_init()`** (launcher tables live there). |
+| **AHB** | Cheats (`ahb_calloc`). Leftover heap is smaller than the old 120 KiB overlay era — 75 KiB FB will not fit. |
+| **RAM_EMU** | Entry, remaining hot text (`render_scanline_text`, `gba_memory`, `sound`, savestate), BSS (EWRAM/IWRAM/VRAM/backup). |
+| **gba.xip** | Cold `.text` + leftover `.rodata`, linked at sentinel `0xDEC00000`, relocated when cached to flash. |
 
-Read `README.md` for build/pack basics. Read `sdk/ld/core_ram_emu.ld` for
-the default linker contract. This file is the memory + porting checklist.
+cpu.o runs from ITCM outside the XIP sentinel scan: **nothing it references
+may live in the flash blob.** Keep its callees' rodata in RAM_EMU.
 
 ## Mental model
 
@@ -362,10 +371,12 @@ In this repo after a firmware change:
 ## Existing binaries in this tree
 
 
-| Path     | Notes                                                                 |
+| Path | Notes |
 | -------- | --------------------------------------------------------------------- |
-| `src/main.c` | Shared CORE / GWHB skeleton (`PROJECT_KIND_*`); LCD + audio beep demo |
+| `src/main_gba.c` | Device glue: ROM XIP, DTCM framebuffer, savestates, blit, audio |
+| `src/gpsp/` | gpSP interpreter / PPU / APU / cartridge |
+| `ld/gba_core.ld` | RAM_EMU + ITCM (code only) + XIP sidecar |
 
 
-Start from `src/main.c` when placing WRAM / heaps / interpreters; use the
-memory map above for ITCM / DTCM / AHB / RAM_EMU choices.
+ITCM is reserved for hot code. Hot buffers (FB / BIOS / sound) use `dtc_*`;
+cheats use `ahb_calloc`. Cold text ships as `gba.xip`.

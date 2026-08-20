@@ -131,8 +131,8 @@ static int map_scancode(SDL_Scancode sc)
     case SDL_SCANCODE_RETURN: return ODROID_INPUT_START;
     case SDL_SCANCODE_RSHIFT:
     case SDL_SCANCODE_LSHIFT: return ODROID_INPUT_SELECT;
-    case SDL_SCANCODE_A: return ODROID_INPUT_Y; /* SELECT on G&W cores */
-    case SDL_SCANCODE_S: return ODROID_INPUT_X; /* START on G&W cores */
+    case SDL_SCANCODE_A: return ODROID_INPUT_Y; /* GBA L via main_gba */
+    case SDL_SCANCODE_S: return ODROID_INPUT_X; /* GBA R via main_gba */
     default: return -1;
     }
 }

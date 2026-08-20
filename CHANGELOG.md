@@ -20,22 +20,27 @@ When you cut a release:
 CI reads the matching section and uses it as the GitHub Release notes. Assets
 attached to the release:
 
-- `<binary>-<tag>.zip` — SD layout only (`cores/` or `homebrews/` + packed `.bin`)
+- `<binary>-<tag>.zip` — SD layout only (`cores/` + packed `.bin` and sidecar `.xip`)
 - `<binary>-<tag>-debug.zip` — ELF + linker map (use `arm-none-eabi-addr2line` for crash PC/LR → function/line)
 
 ## [Unreleased]
 
 ### Added
 
-- (your changes here)
+- Ported the firmware Game Boy Advance core (gpSP + `porting/gba` + M4A HLE)
+  into this standalone tree: `/cores/gba.bin` + `/cores/gba.xip`, `ggcodes`
+  cheats, optional `/bios/gba/gba_bios.bin`.
+- Tag releases ship install + debug zips only (no loose `.bin`): SD layout
+  includes `gba.xip`; debug zip has ELF/map for `addr2line` / `resolve_addr.py`.
 
 ### Changed
 
-- (your changes here)
-
-### Fixed
-
-- (your changes here)
+- Packed output is `gba.bin` (`/cores/gba.bin`). ROMs under `/roms/gba/`.
+- ITCM holds hot **code only** (interpreter, M4A gpsp glue, `update_scanline`).
+  No ITCM data.
+- 240×160 framebuffer is `dtc_malloc`'d (75 KiB; leftover AHB is too small).
+  BIOS and sound ring prefer DTCM, then AHB. Cheats stay on the AHB heap.
+- Logos from firmware `icons/c_gba.bmp` + `h_gba.bmp` packed with `--logo-invert`.
 
 ## [v1.0.0] - 2026-08-12
 

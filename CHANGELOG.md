@@ -23,7 +23,7 @@ attached to the release:
 - `<binary>-<tag>.zip` — SD layout only (`cores/` + packed `.bin` and sidecar `.xip`)
 - `<binary>-<tag>-debug.zip` — ELF + linker map (use `arm-none-eabi-addr2line` for crash PC/LR → function/line)
 
-## [Unreleased]
+## [v0.0.1] - 2026-08-20
 
 ### Added
 
@@ -40,11 +40,7 @@ attached to the release:
   No ITCM data.
 - 240×160 framebuffer is `dtc_malloc`'d (75 KiB; leftover AHB is too small).
   BIOS and sound ring prefer DTCM, then AHB. Cheats stay on the AHB heap.
-- Logos from firmware `icons/c_gba.bmp` + `h_gba.bmp` packed with `--logo-invert`.
-
-## [v1.0.0] - 2026-08-12
-
-Initial public release for your chosen kind (`core` or `homebrew`).
+- Logos from firmware `icons/c_gba.bmp` + `h_gba.bmp`.
 
 ### Added
 

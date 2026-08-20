@@ -839,7 +839,7 @@ void app_main_gba(uint8_t load_state, uint8_t start_paused, int8_t save_slot)
 
     /* Hot buffers: FB in DTCM (75 KB, will not fit leftover AHB). BIOS and
      * the sound ring prefer DTCM too; cheats are cold and stay on AHB. */
-    gba_framebuffer = dtc_malloc(GBA_FRAMEBUFFER_BYTES*15);
+    gba_framebuffer = dtc_malloc(GBA_FRAMEBUFFER_BYTES);
     if (gba_framebuffer == NULL)
         gba_fatal("Out of DTCM", "The 75KB framebuffer could not be allocated");
     memset(gba_framebuffer, 0, GBA_FRAMEBUFFER_BYTES);

@@ -12,7 +12,7 @@
 #######################################
 PROJECT_KIND ?= core
 
-CORE_NAME  := gpsp
+CORE_NAME  := gba
 CORE_ENTRY := app_main_gba
 
 CORE_C_SOURCES := \

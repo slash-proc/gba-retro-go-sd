@@ -64,6 +64,11 @@ make host
 
 Override the image tag if needed: `make docker RELEASE_VERSION=v1.5`.
 
+The packed header version is taken from `git describe --tags --dirty`
+(`CORE_VERSION`; override with `make CORE_VERSION=v1.2.3`). No tags →
+`NOTAG` → header `0.0.0`. Release tags should be `vX.Y.Z` so the Info
+dialog can show a semantic version.
+
 ## Releases (GitHub tags `v*`)
 
 Pushing a tag `vX.Y.Z` (with a matching `## [vX.Y.Z]` section in

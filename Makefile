@@ -96,6 +96,15 @@ include host/Makefile.host
 
 PACK_CORE := $(GNW_CORE_SDK)/tools/pack_core.py
 
+#######################################
+# Packed header version
+#######################################
+# gnw_core_meta_t only stores major.minor.patch (0..255).
+# CORE_VERSION is the full git describe string passed to the packer; it
+# extracts the leading vX.Y.Z (NOTAG / missing tags → 0.0.0).
+# Override: make CORE_VERSION=v1.2.3
+CORE_VERSION ?= $(shell git describe --tags --dirty 2>/dev/null || echo NOTAG)
+
 # gpSP's main.c shares a basename with nothing else here, but pin it so a
 # future vpath collision cannot pick the wrong main.c (firmware Makefile
 # had this exact trap against Core/Src/main.c).
@@ -138,20 +147,20 @@ $(XIP_BIN): $(TARGET_ELF)
 	$(V)$(SZ) --target=binary $@
 
 pack: $(TARGET_BIN) $(BUILD_DIR)/gba_core_itcm.bin $(XIP_BIN) $(PAD_LOGO) $(HEADER_LOGO)
-	$(V)$(ECHO) [ PACK CORE ] $(PACKED_BIN)
+	$(V)$(ECHO) [ PACK CORE ] $(PACKED_BIN) version=$(CORE_VERSION)
 	$(V)python3 $(PACK_CORE) \
 		--elf $(TARGET_ELF) --bin $(TARGET_BIN) \
 		--system name="Nintendo Gameboy Advance",dirname=gba,pad_logo=$(PAD_LOGO),header_logo=$(HEADER_LOGO),ext=gba,parse=rom,cheat_ext=ggcodes \
 		--logo-invert \
 		--segment itcm:__ITCM_CORE_START__:__CORE_ITCM_CODE_END__:__CORE_ITCM_BSS_END__:$(BUILD_DIR)/gba_core_itcm.bin \
 		--core-name "gpSP" \
-		--version 1.0.0 \
+		--version "$(CORE_VERSION)" \
 		--out $(PACKED_BIN)
 
 all: pack
 
 .PHONY: print-PROJECT_KIND print-PACKED_BIN print-CORE_NAME print-DOCKER_IMAGE \
-	print-TARGET_ELF print-TARGET_MAP print-XIP_BIN
+	print-TARGET_ELF print-TARGET_MAP print-XIP_BIN print-CORE_VERSION
 print-PROJECT_KIND:
 	@echo $(PROJECT_KIND)
 print-PACKED_BIN:
@@ -166,6 +175,8 @@ print-TARGET_MAP:
 	@echo $(BUILD_DIR)/$(CORE_NAME)_core.map
 print-XIP_BIN:
 	@echo $(XIP_BIN)
+print-CORE_VERSION:
+	@echo $(CORE_VERSION)
 
 clean::
 	$(V)rm -f $(PACKED_BIN) $(XIP_BIN)

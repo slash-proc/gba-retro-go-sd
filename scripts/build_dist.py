@@ -123,15 +123,17 @@ def download(repo: str, tag: str, dest: Path) -> bool:
 
 
 def declared_files(manifest: dict) -> list[str]:
-    """Every file the manifest names, in a stable order."""
+    """Every file the manifest names, in a stable order.
+
+    Including the ELF in symbols[], which is published but never installed. The
+    mirror still has to carry it: the manifest names it, the spec's checker
+    verifies it is reachable, and an offline bundle is this directory zipped --
+    so a bundle without it cannot symbolicate a crash.
+    """
     names = []
     for target in manifest["targets"]:
         for artifact in target["artifacts"]:
             names.append(artifact["url"])
-        # Published beside the artifacts and hashed like them, but not installed.
-        # The mirror still has to carry it: the manifest names it, the spec's
-        # checker verifies it is reachable, and an offline bundle is this
-        # directory zipped -- so a bundle without it cannot symbolicate a crash.
         for sym in target.get("symbols", []):
             names.append(sym["url"])
     for tool in manifest["tools"]:
@@ -170,8 +172,17 @@ def index_entry(tag: str, release: dict, manifest: dict, bundle: str | None) -> 
     targets = manifest["targets"]
     # Duplicated into the index so a version picker needs one fetch, not N+1.
     # The checker verifies these against the manifest they came from.
+    # "You must supply something" -- whatever the something is. A converter
+    # input, or a BIOS an emulator cannot run without: every core ships
+    # tools: [], so counting only inputs would tell a picker that PC Engine CD
+    # needs nothing when it will not start without a System Card.
     needs_user_files = any(
         i["required"] for tool in manifest["tools"] for i in tool["inputs"]
+    ) or any(
+        b.get("required") or b.get("requiredFor")
+        for target in manifest["targets"]
+        for system in target.get("systems", [])
+        for b in system.get("bios", [])
     )
     return {
         "tag": tag,

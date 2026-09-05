@@ -21,14 +21,17 @@ from pathlib import Path
 
 
 def declared_files(manifest: dict) -> list[str]:
-    """Every file the manifest names, in a stable order."""
+    """Every file the manifest names, in a stable order.
+
+    symbols[] included: a bundle is the archival copy of a release, and a crash
+    in a project that has since disappeared is exactly when its symbols matter
+    most. Being in the bundle does not put it on the card -- it is published,
+    not installed.
+    """
     names = []
     for target in manifest["targets"]:
         for artifact in target["artifacts"]:
             names.append(artifact["url"])
-        # Not installed, but part of what this release published. A bundle is
-        # the archival copy of a release, and a crash in a project that has
-        # since disappeared is exactly when its symbols matter most.
         for sym in target.get("symbols", []):
             names.append(sym["url"])
     for tool in manifest["tools"]:

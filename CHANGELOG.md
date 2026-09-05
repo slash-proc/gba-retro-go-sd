@@ -1,76 +1,43 @@
 # Changelog
 
-This file is a template for the single project created from this repo.
-At project setup time you choose exactly one kind by setting `PROJECT_KIND`
-to `core` or `homebrew` (you will only build/release that chosen kind).
+This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and [Semantic Versioning](https://semver.org/spec/v2.0.0.html). A release
+tag must match a section heading exactly (for example `v1.0.0`): CI reads
+the matching section and uses it as the GitHub Release notes, and refuses
+to release without one.
 
-Update the content for your project and keep the section heading matching
-the pushed release tag (CI requirement).
-
-This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html). Release tags must
-match a section heading exactly (for example `v1.0.0`).
-
-When you cut a release:
-
-1. Move items from `[Unreleased]` into a new `## [vX.Y.Z] - YYYY-MM-DD` section.
-2. Commit the changelog update.
-3. Push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
-
-CI reads the matching section and uses it as the GitHub Release notes. Assets
-attached to the release:
-
-- `<binary>-<tag>.zip` — SD layout only (`cores/` + packed `.bin` and sidecar `.xip`)
-- `<binary>-<tag>-debug.zip` — ELF + linker map (use `arm-none-eabi-addr2line` for crash PC/LR → function/line)
-
-## [v0.0.1] - 2026-08-20
+## [v0.0.2] - 2026-09-06
 
 ### Added
 
-- Ported the firmware Game Boy Advance core (gpSP + `porting/gba` + M4A HLE)
-  into this standalone tree: `/cores/gba.bin` + `/cores/gba.xip`, `ggcodes`
-  cheats, optional `/bios/gba/gba_bios.bin`.
-- Tag releases ship install + debug zips only (no loose `.bin`): SD layout
-  includes `gba.xip`; debug zip has ELF/map for `addr2line` / `resolve_addr.py`.
+- Published under the [GWRG distribution
+  spec](https://github.com/slash-proc/gwrg-dist-spec): a `manifest.json`
+  describing this core and the systems it provides, an offline bundle, and a
+  GitHub Pages mirror of `dist/` that a web installer can read without a human
+  in the loop.
+- `symbols[]` publishes the linked ELF so a crash address from a device can be
+  resolved back to a function. It is named by the manifest and mirrored, but is
+  not part of the install set and never reaches the card.
+- `gwrg.json`, the hand-written half of the manifest: the short console name,
+  whether compressed ROMs work, and any BIOS this core needs. Everything else —
+  the systems, their folders, extensions and browse mode, the firmware ABI,
+  sizes and hashes — is derived from the packed binary at release time.
+- The optional Game Boy Advance BIOS is declared with its hash and exact
+  size; without it the core falls back to a bundled free replacement.
+- `gba.xip` is declared as a second artifact. The core aborts without it,
+  so it now travels through the generic sidecar path (`RO_BIN`) rather
+  than a gba-only flag in the release script.
 
 ### Changed
 
-- Packed output is `gba.bin` (`/cores/gba.bin`). ROMs under `/roms/gba/`.
-- ITCM holds hot **code only** (interpreter, M4A gpsp glue, `update_scanline`).
-  No ITCM data.
-- 240×160 framebuffer is `dtc_malloc`'d (75 KiB; leftover AHB is too small).
-  BIOS and sound ring prefer DTCM, then AHB. Cheats stay on the AHB heap.
-- Logos from firmware `icons/c_gba.bmp` + `h_gba.bmp`.
+- `scripts/make_manifest.py`, `build_dist.py`, `make_bundle.py` and
+  `stage_release.py` are now the shared copies, byte-identical across every
+  project. A script that has to be edited on the way in is a script that drifts.
+- The launcher tab is now "Game Boy Advance" rather than "Nintendo Gameboy
+  Advance". Nobody says the manufacturer, and the name is what a user reads
+  on the device.
 
-### Added
 
-- Freestanding Cortex-M7 skeleton (`src/main.c`) with LCD demo, square-wave
-  audio, save/load/screenshot hooks, and watchdog-friendly frame loop.
-- Vendored SDK, linker scripts, and ABI bridge for `gw_firmware_abi_t`.
-- Packaging for both project kinds:
-  - **core** → `pack_core.py`, SD path `/cores/<name>.bin`
-  - **homebrew** → `pack_homebrew.py`, SD path `/homebrews/<name>.bin`
-- Docker builder integration (`make docker`) using `sylverb/retro-go-sd-builder`.
-- CI build on push/PR and automated GitHub Release on `v*` tags.
+## [v0.0.1]
 
-### Install
-
-Only the section corresponding to your chosen `PROJECT_KIND` is relevant for
-your derived project.
-
-**Core (`PROJECT_KIND=core`, default)**
-
-- Copy `example.bin` to `/cores/` on the SD card.
-- Place test ROMs under `/roms/example/` (dirname matches `CORE_NAME` in the
-  Makefile).
-- Requires firmware whose ABI matches `SDK_VERSION` in this repository.
-
-**Homebrew (`PROJECT_KIND=homebrew`)**
-
-- Set `PROJECT_KIND=homebrew` in the Makefile, rebuild, then copy
-  `ExampleHB.bin` to `/homebrews/`.
-- Optional coverflow override: `/covers/homebrew/ExampleHB.img` (JPEG ≤186×100,
-  ≤10 KiB).
-
-The release archive contains the ready-to-copy SD layout for the active project
-kind only (`cores/` or `homebrews/`).
+Initial core release: gpSP as a standalone dynamic core.

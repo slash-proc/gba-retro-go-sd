@@ -80,6 +80,8 @@ CORE_C_DEFS := \
 
 PACKED_BIN  := $(CORE_NAME).bin
 XIP_BIN     := $(CORE_NAME).xip
+# The generic sidecar name the shared release tooling reads.
+RO_BIN      := $(XIP_BIN)
 PAD_LOGO    := src/assets/pad.bmp
 HEADER_LOGO := src/assets/header.bmp
 
@@ -150,7 +152,7 @@ pack: $(TARGET_BIN) $(BUILD_DIR)/gba_core_itcm.bin $(XIP_BIN) $(PAD_LOGO) $(HEAD
 	$(V)$(ECHO) [ PACK CORE ] $(PACKED_BIN) version=$(CORE_VERSION)
 	$(V)python3 $(PACK_CORE) \
 		--elf $(TARGET_ELF) --bin $(TARGET_BIN) \
-		--system name="Nintendo Gameboy Advance",dirname=gba,pad_logo=$(PAD_LOGO),header_logo=$(HEADER_LOGO),ext=gba,parse=rom,cheat_ext=ggcodes \
+		--system name="Game Boy Advance",dirname=gba,pad_logo=$(PAD_LOGO),header_logo=$(HEADER_LOGO),ext=gba,parse=rom,cheat_ext=ggcodes \
 		--logo-invert \
 		--segment itcm:__ITCM_CORE_START__:__CORE_ITCM_CODE_END__:__CORE_ITCM_BSS_END__:$(BUILD_DIR)/gba_core_itcm.bin \
 		--core-name "gpSP" \
@@ -159,12 +161,17 @@ pack: $(TARGET_BIN) $(BUILD_DIR)/gba_core_itcm.bin $(XIP_BIN) $(PAD_LOGO) $(HEAD
 
 all: pack
 
-.PHONY: print-PROJECT_KIND print-PACKED_BIN print-CORE_NAME print-DOCKER_IMAGE \
+.PHONY: print-PROJECT_KIND print-PACKED_BIN print-RO_BIN print-CORE_NAME print-DOCKER_IMAGE \
 	print-TARGET_ELF print-TARGET_MAP print-XIP_BIN print-CORE_VERSION
 print-PROJECT_KIND:
 	@echo $(PROJECT_KIND)
 print-PACKED_BIN:
 	@echo $(PACKED_BIN)
+# gba ships its execute-in-place blob beside the core, and the core
+# aborts without it. It rides the generic sidecar path rather than a
+# gba-only flag, so the shared script stays one file.
+print-RO_BIN:
+	@echo $(RO_BIN)
 print-CORE_NAME:
 	@echo $(CORE_NAME)
 print-DOCKER_IMAGE:

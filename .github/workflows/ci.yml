@@ -28,7 +28,6 @@ jobs:
       target_elf: ${{ steps.meta.outputs.target_elf }}
       target_map: ${{ steps.meta.outputs.target_map }}
       ro_bin: ${{ steps.meta.outputs.ro_bin }}
-      xip_bin: ${{ steps.meta.outputs.xip_bin }}
 
     steps:
       - name: Checkout
@@ -47,18 +46,15 @@ jobs:
           TARGET_ELF="$(make --no-print-directory -f Makefile print-TARGET_ELF)"
           TARGET_MAP="$(make --no-print-directory -f Makefile print-TARGET_MAP)"
           RO_BIN="$(make --no-print-directory -f Makefile print-RO_BIN)"
-          XIP_BIN="$(make --no-print-directory -f Makefile print-XIP_BIN)"
           echo "project_kind=${PROJECT_KIND}" >> "${GITHUB_OUTPUT}"
           echo "packed_bin=${PACKED_BIN}" >> "${GITHUB_OUTPUT}"
           echo "target_elf=${TARGET_ELF}" >> "${GITHUB_OUTPUT}"
           echo "target_map=${TARGET_MAP}" >> "${GITHUB_OUTPUT}"
           echo "ro_bin=${RO_BIN}" >> "${GITHUB_OUTPUT}"
-          echo "xip_bin=${XIP_BIN}" >> "${GITHUB_OUTPUT}"
           echo "PROJECT_KIND=${PROJECT_KIND}"
           echo "PACKED_BIN=${PACKED_BIN}"
           echo "TARGET_ELF=${TARGET_ELF}"
           echo "TARGET_MAP=${TARGET_MAP}"
-          echo "XIP_BIN=${XIP_BIN}"
 
       - name: Build (Docker)
         run: |
@@ -76,7 +72,7 @@ jobs:
             ${{ steps.meta.outputs.packed_bin }}
             ${{ steps.meta.outputs.target_elf }}
             ${{ steps.meta.outputs.target_map }}
-            ${{ steps.meta.outputs.xip_bin }}
+            ${{ steps.meta.outputs.ro_bin }}
           if-no-files-found: error
 
   release:

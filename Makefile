@@ -82,6 +82,8 @@ PACKED_BIN  := $(CORE_NAME).bin
 XIP_BIN     := $(CORE_NAME).xip
 # The generic sidecar name the shared release tooling reads.
 RO_BIN      := $(XIP_BIN)
+# The same file, under the name the shared tooling now uses.
+SIDECARS   := $(XIP_BIN)
 PAD_LOGO    := src/assets/pad.bmp
 HEADER_LOGO := src/assets/header.bmp
 
@@ -161,7 +163,7 @@ pack: $(TARGET_BIN) $(BUILD_DIR)/gba_core_itcm.bin $(XIP_BIN) $(PAD_LOGO) $(HEAD
 
 all: pack
 
-.PHONY: print-PROJECT_KIND print-PACKED_BIN print-RO_BIN print-CORE_NAME print-DOCKER_IMAGE \
+.PHONY: print-PROJECT_KIND print-PACKED_BIN print-SIDECARS print-RO_BIN print-CORE_NAME print-DOCKER_IMAGE \
 	print-TARGET_ELF print-TARGET_MAP print-XIP_BIN print-CORE_VERSION
 print-PROJECT_KIND:
 	@echo $(PROJECT_KIND)
@@ -170,6 +172,9 @@ print-PACKED_BIN:
 # gba ships its execute-in-place blob beside the core, and the core
 # aborts without it. It rides the generic sidecar path rather than a
 # gba-only flag, so the shared script stays one file.
+# Extra device files installed beside PACKED_BIN, space separated.
+print-SIDECARS:
+	@echo $(SIDECARS)
 print-RO_BIN:
 	@echo $(RO_BIN)
 print-CORE_NAME:

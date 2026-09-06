@@ -132,6 +132,13 @@ jobs:
           # the flag is generic so this step is the same in every project.
           ARTIFACTS=()
           if [ -n "${RO_BIN}" ]; then ARTIFACTS+=(--artifact "release/${RO_BIN}"); fi
+          # Full-size box art, when this project keeps any. Optional and
+          # tolerated when absent, so the same block works in every project.
+          COVER_ARGS=()
+          COVER_FULL="$(make --no-print-directory print-COVER_FULL 2>/dev/null || true)"
+          if [ -n "${COVER_FULL}" ]; then
+            COVER_ARGS+=(--cover "release/$(basename "${COVER_FULL}")")
+          fi
           python3 scripts/make_manifest.py \
             --bin "release/${PACKED_BIN}" \
             "${ARTIFACTS[@]}" \
@@ -139,6 +146,7 @@ jobs:
             --tag "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
             --commit "${GITHUB_SHA}" \
+            "${COVER_ARGS[@]}" \
             --out release/manifest.json
           echo manifest.json >> release/release-files.txt
 

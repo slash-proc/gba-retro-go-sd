@@ -6,7 +6,7 @@ tag must match a section heading exactly (for example `v1.0.0`): CI reads
 the matching section and uses it as the GitHub Release notes, and refuses
 to release without one.
 
-## [v0.0.2] - 2026-09-06
+## [v0.0.2] - 2026-09-08
 
 ### Added
 

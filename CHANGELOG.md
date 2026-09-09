@@ -6,6 +6,15 @@ tag must match a section heading exactly (for example `v1.0.0`): CI reads
 the matching section and uses it as the GitHub Release notes, and refuses
 to release without one.
 
+## [v0.0.3] - 2026-09-09
+
+### Changed
+
+- The manifest's `kind` is now `core`, not `emulator`. A core that emulates
+  nothing -- Doom -- showed that the old word named a subset rather than the
+  set, so the spec took the general term and the SDK and the spec now agree.
+  The previous release publishes the old value and no longer validates.
+
 ## [v0.0.2] - 2026-09-08
 
 ### Added

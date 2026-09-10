@@ -1,0 +1,17 @@
+build/video.o: src/gpsp/video.cc src/gpsp/common.h src/gpsp/cpu.h \
+ src/gpsp/gpsp_config.h src/gpsp/gba_memory.h \
+ src/gpsp/libretro/libretro-common/include/libretro.h \
+ src/gpsp/savestate.h src/gpsp/video.h src/gpsp/input.h src/gpsp/sound.h \
+ src/gpsp/main.h src/gpsp/cheats.h src/gpsp/serial.h
+src/gpsp/common.h:
+src/gpsp/cpu.h:
+src/gpsp/gpsp_config.h:
+src/gpsp/gba_memory.h:
+src/gpsp/libretro/libretro-common/include/libretro.h:
+src/gpsp/savestate.h:
+src/gpsp/video.h:
+src/gpsp/input.h:
+src/gpsp/sound.h:
+src/gpsp/main.h:
+src/gpsp/cheats.h:
+src/gpsp/serial.h:

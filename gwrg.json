@@ -1,9 +1,10 @@
 {
-  "$comment": "The hand-written half of this project's manifest. Everything else -- the systems, their folders, extensions and browse mode, the firmware ABI, sizes and hashes -- is derived from the packed core by scripts/make_manifest.py. Nothing derivable belongs here.",
   "artifacts": {
     "gba.xip": {
-      "$comment": "The cold half of gpSP -- the scanline renderer and the BIOS image -- linked at the sentinel 0xDEC00000 (ld/gba_core.ld, MEMORY region GBA_CODE) and shipped separately because RAM_EMU is ~724 KB and the core wants ~853 KB. It is executed out of memory-mapped QSPI, never read as a file. On an SD install the core caches and relocates it itself at load time; a flash-only image has no such runtime cache, so whoever lays that image out must place this file addressably and add (actual - base) to every 32-bit word in [base, base + bytes), masking the Thumb bit first.",
-      "mapped": { "base": "0xDEC00000" }
+      "$comment": "Linked at 0xDEC00000 -- ld/gba_core.ld, MEMORY region GBA_CODE. Split out and executed from memory-mapped QSPI because RAM_EMU is ~724 KB and gpSP needs ~853 KB.",
+      "mapped": {
+        "base": "0xDEC00000"
+      }
     }
   },
   "systems": {

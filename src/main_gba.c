@@ -366,6 +366,24 @@ static bool gba_cache_xip_to_flash(void)
     printf("gba: xip blob at %p, %lu bytes, offset 0x%08lX\n",
            g_xip_addr, (unsigned long)g_xip_size, (unsigned long)g_xip_offset);
 
+    /* The blob itself must already be relocated by the time we hold it. On SD
+     * gba_relocate_xip() did it on the way into the cache; on a flash-only
+     * build there is no copy and no callback — odroid_overlay_cache_file_in_flash_relocate()
+     * hands back the file where it sits in the firmware image, so whoever
+     * assembled that image had to patch it (the same job scripts/frogfs_pico8_ro.py
+     * does for pico8.ro). Either way a correct blob holds no sentinel-range word
+     * left, so one read-only pass over 190 KB of mapped flash turns a forgotten
+     * build step into a message instead of a hard fault inside the renderer. */
+    for (const uint32_t *p = (const uint32_t *)g_xip_addr,
+                        *e = (const uint32_t *)(g_xip_addr + (g_xip_size & ~3u)); p < e; p++) {
+        uint32_t v = *p & ~1u;
+        if (v >= GBA_CODE_BASE && v < GBA_CODE_BASE + g_xip_size) {
+            printf("gba: %s not relocated (sentinel %08lX at +%u)\n", GBA_XIP_PATH,
+                   (unsigned long)*p, (unsigned)((const uint8_t *)p - g_xip_addr));
+            gba_fatal(GBA_XIP_PATH " was not relocated", "The firmware image was built without patching it");
+        }
+    }
+
     /* Overlay (RAM_EMU after main_gba): long-call veneers into XIP, plus any
      * literal-pool sentinels. main_gba.o itself is excluded — it owns
      * GBA_CODE_BASE and must not rewrite that constant. */

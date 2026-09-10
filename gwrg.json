@@ -2,9 +2,8 @@
   "artifacts": {
     "gba.xip": {
       "$comment": "Linked at 0xDEC00000 -- ld/gba_core.ld, MEMORY region GBA_CODE. Split out and executed from memory-mapped QSPI because RAM_EMU is ~724 KB and gpSP needs ~853 KB.",
-      "mapped": {
-        "base": "0xDEC00000"
-      }
+      "mapped": true,
+      "relocBase": "0xDEC00000"
     }
   },
   "systems": {

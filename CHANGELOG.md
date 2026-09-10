@@ -6,6 +6,20 @@ tag must match a section heading exactly (for example `v1.0.0`): CI reads
 the matching section and uses it as the GitHub Release notes, and refuses
 to release without one.
 
+## [v0.0.4] - 2026-09-10
+
+### Added
+
+- `gba.xip` declares `mapped` and `relocBase` in the manifest. It is executed
+  out of memory-mapped QSPI rather than read as a file, so a builder laying out
+  a flash-only image must place it addressably and relocate it from the
+  sentinel it was linked at; an SD installer needs neither, since the core
+  caches and relocates it at load time.
+- The core now checks at boot that the blob holds no remaining sentinel-range
+  words, and refuses with a message naming the offending value. A builder that
+  forgets to relocate gets a clean failure instead of a hard fault inside the
+  scanline renderer.
+
 ## [v0.0.3] - 2026-09-09
 
 ### Changed

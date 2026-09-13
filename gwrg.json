@@ -10,6 +10,16 @@
     "gba": {
       "shortName": "GBA",
       "compression": false,
+      "runtime": {
+        "$comment": "The device save callback always writes the complete gamepak_backup array. It is 128 KiB so this covers 512-byte/8-KiB EEPROM, 32-KiB SRAM, and 64/128-KiB Flash cartridges conservatively.",
+        "savestate": {
+          "supported": true
+        },
+        "save": {
+          "supported": true,
+          "bytes": 131072
+        }
+      },
       "bios": [
         {
           "id": "gba-bios",
